@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
@@ -32,7 +33,9 @@ import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.data.repository.BackendImplementation
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 import dev.pranav.applock.services.AppLockManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import dev.pranav.applock.ui.theme.AppLockTheme
 
 /**
@@ -49,8 +52,9 @@ class FaceUnlockActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lockedPackage = intent.getStringExtra(EXTRA_LOCKED_PACKAGE)
-        val templates = FaceTemplateStore(this).load()
-        if (lockedPackage == null || templates.isEmpty() || !FaceUnlock.hasCameraPermission(this)) {
+        // Only check that templates exist here; decrypting them (Keystore) happens off the main
+        // thread once the screen is up, so it doesn't hold back the first frame.
+        if (lockedPackage == null || !FaceTemplateStore(this).hasTemplates() || !FaceUnlock.hasCameraPermission(this)) {
             AppLockManager.reportBiometricAuthFinished()
             AppLockManager.isLockScreenShown.set(false)
             finish()
@@ -72,7 +76,7 @@ class FaceUnlockActivity : FragmentActivity() {
         setContent {
             AppLockTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainer) {
-                    FaceUnlockScreen(templates, onSuccess = ::onSuccess, onUsePin = ::usePin)
+                    FaceUnlockScreen(onSuccess = ::onSuccess, onUsePin = ::usePin)
                 }
             }
         }
@@ -158,15 +162,21 @@ class FaceUnlockActivity : FragmentActivity() {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FaceUnlockScreen(
-    templates: List<FloatArray>,
     onSuccess: () -> Unit,
     onUsePin: () -> Unit,
 ) {
-    val verifier = remember { FaceVerifier(templates) }
+    val context = LocalContext.current
+    var templates by remember { mutableStateOf<List<FloatArray>?>(null) }
+    LaunchedEffect(Unit) {
+        val loaded = withContext(Dispatchers.Default) { FaceTemplateStore(context).load() }
+        if (loaded.isEmpty()) onUsePin() else templates = loaded
+    }
+    val verifier = remember(templates) { templates?.let { FaceVerifier(it) } }
     var message by remember { mutableStateOf("") }
     var timedOut by remember { mutableStateOf(false) }
     var scanState by remember { mutableStateOf(FaceScanState.Scanning) }
     var attempt by remember { mutableStateOf(0) }
+    var recognised by remember { mutableStateOf(false) } // face matched, only the blink is left
 
     // If the camera never produces a verdict (no frames), give up instead of waiting forever.
     LaunchedEffect(attempt) {
@@ -200,9 +210,11 @@ private fun FaceUnlockScreen(
         // No preview here: the camera only verifies in the background.
         FaceCameraView(
             showPreview = false,
+            embedFaces = !recognised,
             onError = onUsePin, // camera or model unavailable: fall back to the PIN screen
             onResult = { result, ts ->
                 if (timedOut || scanState == FaceScanState.Success) return@FaceCameraView
+                val verifier = verifier ?: return@FaceCameraView // templates still loading
                 when (val s = verifier.onFrame(result, ts)) {
                     is FaceVerifier.Status.Success -> scanState = FaceScanState.Success
                     FaceVerifier.Status.TimedOut -> {
@@ -210,7 +222,7 @@ private fun FaceUnlockScreen(
                         scanState = FaceScanState.Failed
                         message = "Face not recognised"
                     }
-                    is FaceVerifier.Status.InProgress -> Unit // no on-screen hints
+                    is FaceVerifier.Status.InProgress -> recognised = s.hint == Hint.BLINK // no on-screen hints
                 }
             },
         )
@@ -223,7 +235,7 @@ private fun FaceUnlockScreen(
 
         if (timedOut) {
             Button(onClick = {
-                verifier.reset()
+                verifier?.reset()
                 timedOut = false
                 scanState = FaceScanState.Scanning
                 attempt++

@@ -193,11 +193,6 @@ class UsageLockService: Service() {
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
 
-            Log.d(
-                TAG,
-                "${event.eventType} ${event.className} ${event.packageName} ${event.timeStamp} ${event.configuration} ${event.appStandbyBucket}"
-            )
-
             if (event.eventType != UsageEvents.Event.ACTIVITY_RESUMED && event.eventType != UsageEvents.Event.USER_INTERACTION) continue
 
             if (event.packageName == baseContext.packageName || event.className in AppLockConstants.KNOWN_RECENTS_CLASSES) {
@@ -210,8 +205,6 @@ class UsageLockService: Service() {
                 AppLockManager.clearTemporarilyUnlockedApp()
                 continue
             }
-
-            Log.d(TAG, "recent event ${event.eventType} ${event.className} ${event.packageName}")
 
             if (recentAppTime == event.timeStamp && recentApp?.first != null && appLockRepository.isAppLocked(
                     recentApp!!.first

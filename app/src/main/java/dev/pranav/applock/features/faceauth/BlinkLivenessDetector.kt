@@ -8,7 +8,9 @@ package dev.pranav.applock.features.faceauth
  */
 class BlinkLivenessDetector(
     private val openThreshold: Float = 0.6f,
-    private val closedThreshold: Float = 0.25f,
+    // A real blink lasts about 150 ms, only a frame or two at camera speed, and the detector
+    // often reports a half-closed eye in that frame, so "closed" must be easy to reach.
+    private val closedThreshold: Float = 0.45f,
     private val maxClosedMs: Long = 1_000,
 ) {
     private enum class State { WAIT_OPEN, OPEN, CLOSED, PASSED }

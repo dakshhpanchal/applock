@@ -17,6 +17,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Front-camera preview that streams [FrameResult]s to [onResult] on the main thread.
@@ -29,12 +31,14 @@ fun FaceCameraView(
     showPreview: Boolean = true,
     maxYawDeg: Float = 20f,
     onError: () -> Unit = {},
+    embedFaces: Boolean = true,
     onResult: (FrameResult, Long) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestOnResult by rememberUpdatedState(onResult)
     val latestOnError by rememberUpdatedState(onError)
+    val latestEmbed by rememberUpdatedState(embedFaces)
 
     val previewView = remember {
         PreviewView(context).apply {
@@ -46,21 +50,33 @@ fun FaceCameraView(
     DisposableEffect(lifecycleOwner) {
         val analysisExecutor = Executors.newSingleThreadExecutor()
         val mainExecutor = ContextCompat.getMainExecutor(context)
-        var disposed = false
-        val embedder = try {
-            FaceEmbedder(context)
-        } catch (e: Throwable) {
-            Log.e("FaceCameraView", "Face model failed to load", e)
-            analysisExecutor.shutdown()
-            mainExecutor.execute { latestOnError() }
-            return@DisposableEffect onDispose { disposed = true }
-        }
-        val processor = FaceFrameProcessor(embedder, maxYawDeg = maxYawDeg)
+        val disposed = AtomicBoolean(false)
+        val embedderRef = AtomicReference<FaceEmbedder?>(null)
+        val processorRef = AtomicReference<FaceFrameProcessor?>(null)
+        val analyzerRef = AtomicReference<FaceCameraAnalyzer?>(null)
         var provider: ProcessCameraProvider? = null
+
+        // Loading the model and the detector is slow; doing it here, off the main thread, lets
+        // the screen draw first. The executor is single-threaded, so frames are only analyzed
+        // after this has run.
+        analysisExecutor.execute {
+            try {
+                val embedder = FaceEmbedder(context)
+                val processor = FaceFrameProcessor(embedder, maxYawDeg = maxYawDeg, shouldEmbed = { latestEmbed })
+                embedderRef.set(embedder)
+                processorRef.set(processor)
+                analyzerRef.set(FaceCameraAnalyzer(processor) { result, ts ->
+                    mainExecutor.execute { if (!disposed.get()) latestOnResult(result, ts) }
+                })
+            } catch (e: Throwable) {
+                Log.e("FaceCameraView", "Face model failed to load", e)
+                mainExecutor.execute { if (!disposed.get()) latestOnError() }
+            }
+        }
 
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
-            if (disposed) return@addListener
+            if (disposed.get()) return@addListener
             try {
                 val cameraProvider = future.get().also { provider = it }
                 val analysis = ImageAnalysis.Builder()
@@ -68,9 +84,10 @@ fun FaceCameraView(
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
                     .also {
-                        it.setAnalyzer(analysisExecutor, FaceCameraAnalyzer(processor) { result, ts ->
-                            mainExecutor.execute { if (!disposed) latestOnResult(result, ts) }
-                        })
+                        it.setAnalyzer(analysisExecutor) { image ->
+                            val analyzer = analyzerRef.get()
+                            if (analyzer == null) image.close() else analyzer.analyze(image)
+                        }
                     }
                 cameraProvider.unbindAll()
                 if (showPreview) {
@@ -93,11 +110,11 @@ fun FaceCameraView(
         }, mainExecutor)
 
         onDispose {
-            disposed = true
+            disposed.set(true)
             provider?.unbindAll()
             analysisExecutor.execute {
-                processor.close()
-                embedder.close()
+                processorRef.get()?.close()
+                embedderRef.get()?.close()
             }
             analysisExecutor.shutdown()
         }

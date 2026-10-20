@@ -25,6 +25,9 @@ class FaceFrameProcessor(
     private val maxPitchDeg: Float = 20f,
     private val maxRollDeg: Float = 12f,
     private val eyesOpenForEmbedding: Float = 0.5f,
+    /** Asked per frame. Once the face is recognized only the blink is left, and embedding every
+     *  frame would just slow the frame rate the blink is sampled at. */
+    private val shouldEmbed: () -> Boolean = { true },
 ) : Closeable {
 
     private val detector = FaceDetection.getClient(
@@ -55,7 +58,7 @@ class FaceFrameProcessor(
         val right = face.rightEyeOpenProbability
         val eyesOpen = left != null && right != null && left >= eyesOpenForEmbedding && right >= eyesOpenForEmbedding
 
-        val embedding = if (eyesOpen) cropAligned(frame, face)?.let { crop ->
+        val embedding = if (eyesOpen && shouldEmbed()) cropAligned(frame, face)?.let { crop ->
             embedder.embed(crop).also { crop.recycle() }
         } else null
 
