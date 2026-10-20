@@ -65,7 +65,7 @@ Make sure you have Shizuku installed and enabled via ADB. Tap \'Next\' to grant 
     <string name="unlock_app_title">Unlock %1$s</string>
     <string name="confirm_biometric_subtitle">Confirm biometric to continue</string>
     <string name="use_pin_button">Use PIN</string>
-    <string name="enter_password_to_continue">Enter password to continue</string>
+    <string name="enter_password_to_continue">Enter password</string>
     <string name="biometric_authentication_cd">Biometric Authentication</string>
 
     <!-- SetPasswordScreen -->
@@ -287,7 +287,7 @@ Make sure you have Shizuku installed and enabled via ADB. Tap \'Next\' to grant 
     <string name="settings_screen_version_template">Version %1$s</string>
 
     <!-- Pattern Lock Strings -->
-    <string name="enter_pattern_to_continue">Draw pattern to continue</string>
+    <string name="enter_pattern_to_continue">Draw pattern</string>
     <string name="incorrect_pattern_try_again">Incorrect pattern. Please try again.</string>
     <!-- Permission Warning Banner Strings -->
     <string name="permission_warning_overlay_title">Display over other apps</string>

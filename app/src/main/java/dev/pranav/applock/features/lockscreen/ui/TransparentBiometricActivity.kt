@@ -18,21 +18,25 @@ import dev.pranav.applock.ui.theme.AppLockTheme
 class TransparentBiometricActivity: FragmentActivity() {
     private val TAG = "TransparentBiometric"
     private var lockedPackageName: String? = null
+    private val hideOverlay = Runnable { AppLockManager.hideLockRequester?.invoke() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lockedPackageName = intent.getStringExtra("locked_package")
 
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(dev.pranav.applock.ui.theme.lockBackgroundColor(this)))
         setContent {
             AppLockTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.surfaceContainer
                 ) {}
             }
         }
 
         AppLockManager.reportBiometricAuthStarted()
+        // Take the PIN overlay down only once this screen has had time to draw.
+        window.decorView.postDelayed(hideOverlay, 300)
 
         val executor = ContextCompat.getMainExecutor(this)
         val biometricPrompt = BiometricPrompt(
@@ -41,9 +45,19 @@ class TransparentBiometricActivity: FragmentActivity() {
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
                     AppLockManager.reportBiometricAuthFinished()
+                    window.decorView.removeCallbacks(hideOverlay) // the PIN overlay must stay up
                     // The overlay was removed when the prompt opened; let the service show it again.
                     AppLockManager.isLockScreenShown.set(false)
-                    finish() // Close transparent activity if failed/canceled
+                    lockedPackageName?.let(AppLockManager::clearAppUnlockState)
+                    // Cover the app with the PIN screen before this closes (no glimpse of it).
+                    val pkg = lockedPackageName
+                    val requester = AppLockManager.showLockRequester
+                    if (pkg != null && requester != null) {
+                        requester(pkg)
+                        window.decorView.postDelayed({ finish() }, 250)
+                    } else {
+                        finish() // Close transparent activity if failed/canceled
+                    }
                 }
 
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
@@ -53,6 +67,8 @@ class TransparentBiometricActivity: FragmentActivity() {
                     lockedPackageName?.let {
                         AppLockManager.temporarilyUnlockAppWithBiometrics(it)
                     }
+                    window.decorView.removeCallbacks(hideOverlay)
+                    AppLockManager.hideLockRequester?.invoke()
 
 
                     // The Accessibility service will detect the unlock state

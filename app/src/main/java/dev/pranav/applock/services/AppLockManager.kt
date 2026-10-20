@@ -55,6 +55,18 @@ object AppLockManager {
     var temporarilyUnlockedApp: String = ""
     val appUnlockTimes = ConcurrentHashMap<String, Long>()
     val isLockScreenShown = AtomicBoolean(false)
+    /**
+     * Set by the accessibility service. Asks it to show the PIN overlay for a package right now,
+     * so a biometric screen can close with the overlay already covering the app (no glimpse of it).
+     */
+    @Volatile
+    var showLockRequester: ((String) -> Unit)? = null
+    /**
+     * Set by the accessibility service. A biometric screen calls it once it is on screen to take
+     * the PIN overlay down, so the PIN screen is replaced without the app showing in between.
+     */
+    @Volatile
+    var hideLockRequester: (() -> Unit)? = null
     var currentBiometricState: AppLockAccessibilityService.BiometricState? = null
 
     // Grace period tracking

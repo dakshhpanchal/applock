@@ -1,5 +1,6 @@
 package dev.pranav.applock.features.faceauth
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,6 +28,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import dev.pranav.applock.core.utils.appLockRepository
+import dev.pranav.applock.data.repository.BackendImplementation
+import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 import dev.pranav.applock.services.AppLockManager
 import kotlinx.coroutines.delay
 import dev.pranav.applock.ui.theme.AppLockTheme
@@ -39,6 +44,7 @@ class FaceUnlockActivity : FragmentActivity() {
     private var lockedPackage: String? = null
     private var finishedHandled = false
     private var unlocked = false
+    private val hideOverlay = Runnable { AppLockManager.hideLockRequester?.invoke() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,6 +57,7 @@ class FaceUnlockActivity : FragmentActivity() {
             return
         }
 
+        FaceUnlock.screenOpen = true
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         AppLockManager.reportBiometricAuthStarted()
 
@@ -58,6 +65,10 @@ class FaceUnlockActivity : FragmentActivity() {
             override fun handleOnBackPressed() = usePin()
         })
 
+        // Take the PIN overlay down only once this screen has had time to draw.
+        window.decorView.postDelayed(hideOverlay, 300)
+
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(dev.pranav.applock.ui.theme.lockBackgroundColor(this)))
         setContent {
             AppLockTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainer) {
@@ -71,33 +82,69 @@ class FaceUnlockActivity : FragmentActivity() {
         if (finishedHandled) return
         finishedHandled = true
         unlocked = true
+        window.decorView.removeCallbacks(hideOverlay)
+        AppLockManager.hideLockRequester?.invoke()
         lockedPackage?.let { AppLockManager.temporarilyUnlockAppWithBiometrics(it) }
         AppLockManager.isLockScreenShown.set(false)
         AppLockManager.reportBiometricAuthFinished()
         finish()
     }
 
-    private fun usePin() {
+    private fun usePin(showLock: Boolean = true) {
         if (finishedHandled) return
         finishedHandled = true
+        window.decorView.removeCallbacks(hideOverlay) // the PIN overlay must stay up
         lockedPackage?.let(FaceUnlock::skipNextAutoStart)
         AppLockManager.reportBiometricAuthFinished()
         // The overlay was removed when face unlock started; clearing this lets the service
         // show the PIN screen again when the locked app comes back to the front.
         AppLockManager.isLockScreenShown.set(false)
-        finish()
+        // Choosing the PIN means the app is not unlocked: drop any stale unlock state.
+        lockedPackage?.let(AppLockManager::clearAppUnlockState)
+
+        // Put the PIN screen up first and only then close this one, so the app underneath is
+        // never visible in between.
+        val pkg = lockedPackage
+        val requester = AppLockManager.showLockRequester
+        val usesAccessibility = appLockRepository().getBackendImplementation() == BackendImplementation.ACCESSIBILITY
+        if (showLock && pkg != null && usesAccessibility && requester != null) {
+            requester(pkg)
+            window.decorView.postDelayed({ finish() }, 250)
+        } else if (showLock && pkg != null && !usesAccessibility) {
+            // Usage-stats / Shizuku backends: the PIN screen is an activity that closed itself
+            // when this one opened. Bring it back right now instead of waiting for the next poll.
+            AppLockManager.isLockScreenShown.set(true)
+            try {
+                startActivity(
+                    Intent(this, PasswordOverlayActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                                Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                        putExtra("locked_package", pkg)
+                        putExtra("triggering_package", pkg)
+                    }
+                )
+            } catch (e: Exception) {
+                AppLockManager.isLockScreenShown.set(false)
+            }
+            window.decorView.postDelayed({ finish() }, 150)
+        } else {
+            finish()
+        }
     }
 
     override fun onStop() {
         super.onStop()
         // Left via Home/Recents: give up quietly; the lock screen will show again next time.
-        if (!isChangingConfigurations && !finishedHandled) usePin()
+        if (!isChangingConfigurations && !finishedHandled) usePin(showLock = false)
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        FaceUnlock.screenOpen = false
         // Safety net: any exit without an unlock must let the PIN screen come back.
-        if (!unlocked) {
+        if (!unlocked && !finishedHandled) {
             AppLockManager.reportBiometricAuthFinished()
             AppLockManager.isLockScreenShown.set(false)
         }
@@ -108,6 +155,7 @@ class FaceUnlockActivity : FragmentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FaceUnlockScreen(
     templates: List<FloatArray>,
@@ -143,7 +191,7 @@ private fun FaceUnlockScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("Face unlock", style = MaterialTheme.typography.headlineSmall)
+        Text("Face unlock", style = MaterialTheme.typography.headlineMediumEmphasized, textAlign = TextAlign.Center)
         Spacer(Modifier.height(24.dp))
 
         FaceScanIndicator(scanState)

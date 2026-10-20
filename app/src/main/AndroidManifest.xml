@@ -61,14 +61,15 @@
             android:launchMode="singleInstance"
             android:noHistory="true"
             android:taskAffinity=""
-            android:theme="@android:style/Theme.Material.NoActionBar.TranslucentDecor" />
+            android:theme="@style/Theme.AppLock.Overlay" />
 
 
         <activity
             android:name=".features.lockscreen.ui.TransparentBiometricActivity"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:launchMode="singleInstance" />
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.AppLock.Face" />
 
 
         <activity
@@ -77,7 +78,7 @@
             android:exported="false"
             android:launchMode="singleInstance"
             android:taskAffinity=""
-            android:theme="@style/Theme.AppLock" />
+            android:theme="@style/Theme.AppLock.Face" />
 
         <activity
             android:name=".features.faceauth.FaceEnrollActivity"

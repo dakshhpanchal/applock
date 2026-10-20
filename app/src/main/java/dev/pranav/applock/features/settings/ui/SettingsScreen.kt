@@ -95,6 +95,7 @@ fun SettingsScreen(
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         // Refresh after returning from the enrollment screen.
         faceUnlockOn = FaceUnlock.isReady(context)
+        useBiometricAuth = appLockRepository.isBiometricAuthEnabled() // enrolling a face turns it off
     }
     var unlockTimeDuration by remember { mutableIntStateOf(appLockRepository.getUnlockTimeDuration()) }
     var antiUninstallEnabled by remember { mutableStateOf(appLockRepository.isAntiUninstallEnabled()) }
@@ -285,6 +286,12 @@ fun SettingsScreen(
                             onCheckedChange = { isChecked ->
                                 useBiometricAuth = isChecked
                                 appLockRepository.setBiometricAuthEnabled(isChecked)
+                                if (isChecked && faceUnlockOn) {
+                                    // Only one biometric mode at a time.
+                                    appLockRepository.setFaceUnlockEnabled(false)
+                                    FaceTemplateStore(context).clear()
+                                    faceUnlockOn = false
+                                }
                             }
                         ),
                         ToggleSettingItem(
@@ -293,7 +300,7 @@ fun SettingsScreen(
                             subtitle = if (faceUnlockOn)
                                 "On. Turning it off deletes your saved face data."
                             else
-                                "Front-camera face check with a blink. Less secure than fingerprint.",
+                                "Front-camera face check with a blink. Replaces fingerprint. Less secure.",
                             checked = faceUnlockOn,
                             enabled = true,
                             onCheckedChange = { isChecked ->

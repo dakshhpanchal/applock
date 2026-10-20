@@ -49,6 +49,7 @@ import dev.pranav.applock.R
 import dev.pranav.applock.core.ui.shapes
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.core.utils.vibrate
+import dev.pranav.applock.ui.theme.lockBackgroundColor
 import dev.pranav.applock.core.utils.vibrateTick
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.PreferencesRepository
@@ -152,6 +153,7 @@ class PasswordOverlayActivity: FragmentActivity() {
             layoutParams.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
         }
         window.attributes = layoutParams
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(lockBackgroundColor(this)))
     }
 
     private fun loadAppNameAndSetupUI() {
@@ -197,6 +199,8 @@ class PasswordOverlayActivity: FragmentActivity() {
             AppLockTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    // Same color as the lock screens inside, so the status bar area matches.
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     contentColor = MaterialTheme.colorScheme.primaryContainer
                 ) { innerPadding ->
                     val lockType = appLockRepository.getLockType()
@@ -221,7 +225,7 @@ class PasswordOverlayActivity: FragmentActivity() {
                                 lockedAppName = appName,
                                 triggeringPackageName = triggeringPackageNameFromIntent,
                                 onPasswordAttempt = onPinAttemptCallback,
-                                showCloseButton = true,
+                                showCloseButton = false,
                                 onClose = { finish() }
                             )
                         }
@@ -236,7 +240,7 @@ class PasswordOverlayActivity: FragmentActivity() {
                                 lockedAppName = appName,
                                 triggeringPackageName = triggeringPackageNameFromIntent,
                                 onPinAttempt = onPinAttemptCallback,
-                                showCloseButton = true,
+                                showCloseButton = false,
                                 onClose = { finish() }
                             )
 
@@ -424,10 +428,7 @@ fun PinPasswordOverlayScreen(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                                "Continue to $lockedAppName"
-                            else
-                                stringResource(R.string.enter_password_to_continue),
+                            text = stringResource(R.string.enter_password_to_continue),
                             style = MaterialTheme.typography.titleLarge,
                             textAlign = TextAlign.Center
                         )
@@ -494,14 +495,8 @@ fun PinPasswordOverlayScreen(
                     Spacer(modifier = Modifier.height(topSpacerHeight))
 
                     Text(
-                        text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                            "Continue to $lockedAppName"
-                        else
-                            stringResource(R.string.enter_password_to_continue),
-                        style = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                            MaterialTheme.typography.titleLargeEmphasized
-                        else
-                            MaterialTheme.typography.headlineMediumEmphasized,
+                        text = stringResource(R.string.enter_password_to_continue),
+                        style = MaterialTheme.typography.headlineMediumEmphasized,
                         textAlign = TextAlign.Center
                     )
 

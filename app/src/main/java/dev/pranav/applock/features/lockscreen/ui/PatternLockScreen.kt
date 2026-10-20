@@ -48,7 +48,7 @@ fun PatternLockScreen(
 
     Surface(
         modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             var showError by remember { mutableStateOf(false) }
@@ -110,10 +110,7 @@ fun PatternLockScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                                    "Continue to $lockedAppName"
-                                else
-                                    stringResource(R.string.enter_pattern_to_continue),
+                                text = stringResource(R.string.enter_pattern_to_continue),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center
@@ -182,10 +179,7 @@ fun PatternLockScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = if (!fromMainActivity && !lockedAppName.isNullOrEmpty())
-                                "Continue to $lockedAppName"
-                            else
-                                stringResource(R.string.enter_pattern_to_continue),
+                            text = stringResource(R.string.enter_pattern_to_continue),
                             style = MaterialTheme.typography.headlineMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center

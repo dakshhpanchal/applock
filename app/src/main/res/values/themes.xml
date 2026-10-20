@@ -2,4 +2,27 @@
 <resources>
 
     <style name="Theme.AppLock" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Face unlock screen: no window animations, so nothing flashes while it opens or closes. -->
+    <style name="Theme.AppLock.Face">
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
+    <!-- PIN / pattern lock screen activity. -->
+    <style name="Theme.AppLock.Overlay" parent="android:Theme.Material.NoActionBar.TranslucentDecor">
+        <item name="android:windowAnimationStyle">@style/LockWindowAnimation</item>
+    </style>
+
+    <!-- The lock screen fades in over the app instead of popping in mid-animation. -->
+    <style name="LockWindowAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/lock_fade_in</item>
+        <item name="android:activityOpenExitAnimation">@null</item>
+        <item name="android:activityCloseEnterAnimation">@null</item>
+        <item name="android:activityCloseExitAnimation">@anim/lock_fade_out</item>
+        <item name="android:taskOpenEnterAnimation">@anim/lock_fade_in</item>
+        <item name="android:taskOpenExitAnimation">@null</item>
+        <item name="android:taskCloseEnterAnimation">@null</item>
+        <item name="android:taskCloseExitAnimation">@anim/lock_fade_out</item>
+    </style>
+
 </resources>

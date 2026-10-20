@@ -126,7 +126,7 @@ class UsageLockService: Service() {
         timer = Timer("AppLockUsageStatsMonitor", true)
         timer?.schedule(timerTask {
             safeMonitorForegroundApp()
-        }, 0, 250)
+        }, 0, 100)
     }
 
     private fun safeMonitorForegroundApp() {
@@ -270,7 +270,6 @@ class UsageLockService: Service() {
         val intent = Intent(this, PasswordOverlayActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
-                    Intent.FLAG_ACTIVITY_NO_ANIMATION or
                     Intent.FLAG_FROM_BACKGROUND or
                     Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             putExtra("locked_package", packageName)

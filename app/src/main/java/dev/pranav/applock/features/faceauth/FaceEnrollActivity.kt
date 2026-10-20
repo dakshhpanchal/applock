@@ -42,6 +42,7 @@ import dev.pranav.applock.ui.theme.AppLockTheme
 class FaceEnrollActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(dev.pranav.applock.ui.theme.lockBackgroundColor(this)))
         setContent {
             AppLockTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainer) {
@@ -128,7 +129,10 @@ private fun EnrollCamera(onDone: () -> Unit) {
                     target = s.templates.size
                     try {
                         FaceTemplateStore(context).save(s.templates)
-                        context.appLockRepository().setFaceUnlockEnabled(true)
+                        context.appLockRepository().apply {
+                            setFaceUnlockEnabled(true)
+                            setBiometricAuthEnabled(false) // only one biometric mode at a time
+                        }
                         Toast.makeText(context, "Face unlock is on", Toast.LENGTH_SHORT).show()
                         onDone()
                     } catch (e: Exception) {

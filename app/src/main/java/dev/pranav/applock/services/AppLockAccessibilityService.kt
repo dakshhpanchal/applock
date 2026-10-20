@@ -77,6 +77,8 @@ class AppLockAccessibilityService : AccessibilityService() {
             mainHandler = Handler(mainLooper)
 
             overlayManager = LockScreenOverlayManager(this)
+            AppLockManager.showLockRequester = { pkg -> showLockScreenOverlay(pkg, pkg) }
+            AppLockManager.hideLockRequester = { mainHandler.post { overlayManager?.removeOverlay() } }
 
             val filter = android.content.IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_OFF)
@@ -568,6 +570,8 @@ class AppLockAccessibilityService : AccessibilityService() {
         try {
             super.onDestroy()
             isServiceRunning = false
+            AppLockManager.showLockRequester = null
+            AppLockManager.hideLockRequester = null
             LogUtils.d(TAG, "Accessibility service destroyed")
 
             overlayManager?.removeOverlay()

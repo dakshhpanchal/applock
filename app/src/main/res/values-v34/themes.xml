@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- The system's own surface-container color, the same one the lock screens use under
+         dynamic color, so the window is the app's color from the very first frame. -->
+    <style name="Theme.AppLock" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/system_surface_container_light</item>
+    </style>
+
+    <style name="Theme.AppLock.Overlay" parent="android:Theme.Material.NoActionBar.TranslucentDecor">
+        <item name="android:windowAnimationStyle">@style/LockWindowAnimation</item>
+        <item name="android:windowBackground">@android:color/system_surface_container_light</item>
+    </style>
+</resources>

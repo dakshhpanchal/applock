@@ -15,9 +15,12 @@ object FaceUnlock {
 
     /** Packages whose next automatic face attempt should be skipped (user chose PIN). */
     private val skipNextAuto = ConcurrentHashMap<String, Long>()
-    private const val SKIP_VALID_MS = 60_000L
+    private const val SKIP_VALID_MS = 5_000L // just long enough to avoid an instant relaunch loop
 
     @Volatile private var lastLaunchAt = 0L
+
+    /** True while a face unlock screen exists, so an automatic start can't stack a second one. */
+    @Volatile var screenOpen = false
 
     fun hasCameraPermission(context: Context): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
@@ -31,9 +34,12 @@ object FaceUnlock {
                 FaceEmbedder.isModelBundled(context)
 
     /** Manual start (the biometric button). Returns false if debounced or it couldn't start. */
-    fun launch(context: Context, lockedPackage: String): Boolean {
+    fun launch(context: Context, lockedPackage: String, auto: Boolean = false): Boolean {
         val now = SystemClock.elapsedRealtime()
-        if (now - lastLaunchAt < 1_500) return false // debounce double triggers
+        // Only automatic starts are guarded (a tap on the button must always work), and only
+        // against a double trigger or a screen that's already up, so a new lock screen
+        // right after an unlock still starts face unlock.
+        if (auto && (screenOpen || now - lastLaunchAt < 400)) return false
         lastLaunchAt = now
 
         AppLockManager.reportBiometricAuthStarted()
@@ -60,7 +66,7 @@ object FaceUnlock {
     fun launchAuto(context: Context, lockedPackage: String): Boolean {
         val skippedAt = skipNextAuto.remove(lockedPackage)
         if (skippedAt != null && SystemClock.elapsedRealtime() - skippedAt < SKIP_VALID_MS) return false
-        return launch(context, lockedPackage)
+        return launch(context, lockedPackage, auto = true)
     }
 
     fun skipNextAutoStart(lockedPackage: String) {

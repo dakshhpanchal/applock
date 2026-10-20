@@ -130,7 +130,7 @@ class LockScreenOverlayManager(private val context: Context):
                                 PreferencesRepository.LOCK_TYPE_PATTERN -> {
                                     PatternLockScreen(
                                         fromMainActivity = false,
-                                        showCloseButton = true,
+                                        showCloseButton = false,
                                         onClose = {
                                             onExit()
                                             removeOverlay()
@@ -146,7 +146,7 @@ class LockScreenOverlayManager(private val context: Context):
                                     AlphanumericPasswordOverlayScreen(
                                         showBiometricButton = appLockRepository.isBiometricAuthEnabled() || faceReady,
                                         fromMainActivity = false,
-                                        showCloseButton = true,
+                                        showCloseButton = false,
                                         onClose = {
                                             onExit()
                                             removeOverlay()
@@ -166,7 +166,7 @@ class LockScreenOverlayManager(private val context: Context):
                                     PinPasswordOverlayScreen(
                                         showBiometricButton = appLockRepository.isBiometricAuthEnabled() || faceReady,
                                         fromMainActivity = false,
-                                        showCloseButton = true,
+                                        showCloseButton = false,
                                         onClose = {
                                             onExit()
                                             removeOverlay()
@@ -205,6 +205,10 @@ class LockScreenOverlayManager(private val context: Context):
             }
         }
 
+        // Opaque from the very first frame: Compose needs a few more frames to draw its own
+        // content, and until then the locked app would show through the transparent window.
+        composeView?.setBackgroundColor(coverColor())
+
         composeView?.isFocusableInTouchMode = true
         composeView?.requestFocus()
 
@@ -232,10 +236,16 @@ class LockScreenOverlayManager(private val context: Context):
         }
     }
 
+    /** Plain background that matches the lock screen, so the app is hidden from the first frame. */
+    private fun coverColor(): Int = dev.pranav.applock.ui.theme.lockBackgroundColor(context)
+
     /** Face unlock when it's set up, otherwise the system fingerprint prompt. */
     private fun startBiometricOrFace(lockedPackageName: String) {
         if (FaceUnlock.isReady(context)) {
-            if (FaceUnlock.launchAuto(context, lockedPackageName)) removeOverlay()
+            // The face screen takes this overlay down once it is on screen.
+            if (FaceUnlock.launchAuto(context, lockedPackageName) && AppLockManager.hideLockRequester == null) {
+                removeOverlay()
+            }
             return
         }
         val intent = Intent(context, TransparentBiometricActivity::class.java).apply {
@@ -245,7 +255,8 @@ class LockScreenOverlayManager(private val context: Context):
         AppLockManager.reportBiometricAuthStarted()
         try {
             context.startActivity(intent)
-            removeOverlay()
+            // The biometric screen takes this overlay down once it is on screen.
+            if (AppLockManager.hideLockRequester == null) removeOverlay()
         } catch (e: Exception) {
             // Keep the PIN overlay up rather than exposing the app.
             AppLockManager.reportBiometricAuthFinished()
