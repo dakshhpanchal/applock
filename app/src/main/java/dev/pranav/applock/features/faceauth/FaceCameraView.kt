@@ -26,6 +26,7 @@ import java.util.concurrent.Executors
 @Composable
 fun FaceCameraView(
     modifier: Modifier = Modifier,
+    showPreview: Boolean = true,
     onResult: (FrameResult, Long) -> Unit,
 ) {
     val context = LocalContext.current
@@ -52,9 +53,6 @@ fun FaceCameraView(
             if (disposed) return@addListener
             try {
                 val cameraProvider = future.get().also { provider = it }
-                val preview = Preview.Builder().build().also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
                 val analysis = ImageAnalysis.Builder()
                     .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -65,9 +63,19 @@ fun FaceCameraView(
                         })
                     }
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, preview, analysis
-                )
+                if (showPreview) {
+                    val preview = Preview.Builder().build().also {
+                        it.setSurfaceProvider(previewView.surfaceProvider)
+                    }
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, preview, analysis
+                    )
+                } else {
+                    // Analysis only: the camera runs but nothing is shown on screen.
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, analysis
+                    )
+                }
             } catch (e: Exception) {
                 Log.e("FaceCameraView", "Camera bind failed", e)
             }
@@ -84,7 +92,7 @@ fun FaceCameraView(
         }
     }
 
-    AndroidView(factory = { previewView }, modifier = modifier)
+    if (showPreview) AndroidView(factory = { previewView }, modifier = modifier)
 }
 
 /** User-facing text for a hint. */
