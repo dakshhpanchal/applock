@@ -25,6 +25,11 @@ import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import dev.pranav.applock.features.faceauth.FaceEnrollActivity
+import dev.pranav.applock.features.faceauth.FaceTemplateStore
+import dev.pranav.applock.features.faceauth.FaceUnlock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -86,6 +91,11 @@ fun SettingsScreen(
     var autoUnlock by remember { mutableStateOf(appLockRepository.isAutoUnlockEnabled()) }
     var useMaxBrightness by remember { mutableStateOf(appLockRepository.shouldUseMaxBrightness()) }
     var useBiometricAuth by remember { mutableStateOf(appLockRepository.isBiometricAuthEnabled()) }
+    var faceUnlockOn by remember { mutableStateOf(FaceUnlock.isReady(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        // Refresh after returning from the enrollment screen.
+        faceUnlockOn = FaceUnlock.isReady(context)
+    }
     var unlockTimeDuration by remember { mutableIntStateOf(appLockRepository.getUnlockTimeDuration()) }
     var antiUninstallEnabled by remember { mutableStateOf(appLockRepository.isAntiUninstallEnabled()) }
     var disableHapticFeedback by remember { mutableStateOf(appLockRepository.shouldDisableHaptics()) }
@@ -275,6 +285,26 @@ fun SettingsScreen(
                             onCheckedChange = { isChecked ->
                                 useBiometricAuth = isChecked
                                 appLockRepository.setBiometricAuthEnabled(isChecked)
+                            }
+                        ),
+                        ToggleSettingItem(
+                            icon = Icons.Default.Face,
+                            title = "Face unlock (camera)",
+                            subtitle = if (faceUnlockOn)
+                                "On. Turning it off deletes your saved face data."
+                            else
+                                "Front-camera face check with a blink. Less secure than fingerprint.",
+                            checked = faceUnlockOn,
+                            enabled = true,
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    // Enrollment turns the setting on once it succeeds.
+                                    context.startActivity(Intent(context, FaceEnrollActivity::class.java))
+                                } else {
+                                    appLockRepository.setFaceUnlockEnabled(false)
+                                    FaceTemplateStore(context).clear()
+                                    faceUnlockOn = false
+                                }
                             }
                         ),
                         ToggleSettingItem(

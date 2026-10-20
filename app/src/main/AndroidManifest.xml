@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
 
     <uses-permission
@@ -68,6 +70,19 @@
             android:exported="false"
             android:launchMode="singleInstance" />
 
+
+        <activity
+            android:name=".features.faceauth.FaceUnlockActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
+            android:theme="@style/Theme.AppLock" />
+
+        <activity
+            android:name=".features.faceauth.FaceEnrollActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppLock" />
 
         <activity
             android:name=".features.admin.AdminDisableActivity"

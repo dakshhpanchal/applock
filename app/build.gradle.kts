@@ -46,6 +46,11 @@ android {
         aidl = true
     }
 
+    androidResources {
+        // The TFLite model is memory-mapped, so it must be stored uncompressed.
+        noCompress += "tflite"
+    }
+
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -73,6 +78,16 @@ dependencies {
     compileOnly(project(":hidden-api"))
     implementation(libs.hiddenapibypass)
     implementation(project(":patternlock"))
+
+    // Face unlock (camera + ML Kit detection + TFLite embedding)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.face.detection)
+    implementation(libs.litert)
+
+    testImplementation(libs.junit)
 
 
 

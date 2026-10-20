@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
@@ -28,6 +30,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.data.repository.PreferencesRepository
+import dev.pranav.applock.features.faceauth.FaceUnlock
 import dev.pranav.applock.services.AppLockManager
 import dev.pranav.applock.ui.theme.AppLockTheme
 
@@ -113,6 +116,15 @@ class LockScreenOverlayManager(private val context: Context):
                             }
 
                             val lockType = appLockRepository.getLockType()
+                            val faceReady = remember { FaceUnlock.isReady(context) }
+
+                            // Start face unlock automatically. The pattern screen already
+                            // auto-triggers onBiometricAuth when fingerprint is on, so skip it there.
+                            val patternAutoTriggers = lockType == PreferencesRepository.LOCK_TYPE_PATTERN &&
+                                    appLockRepository.isBiometricAuthEnabled()
+                            if (faceReady && !patternAutoTriggers) {
+                                LaunchedEffect(Unit) { startBiometricOrFace(lockedPackageName) }
+                            }
 
                             when (lockType) {
                                 PreferencesRepository.LOCK_TYPE_PATTERN -> {
@@ -126,25 +138,13 @@ class LockScreenOverlayManager(private val context: Context):
                                         lockedAppName = appName,
                                         triggeringPackageName = triggeringPackageName,
                                         onPatternAttempt = onPatternAttemptCallback,
-                                        onBiometricAuth = {
-                                            val intent = Intent(
-                                                context,
-                                                TransparentBiometricActivity::class.java
-                                            ).apply {
-                                                flags =
-                                                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
-                                                putExtra("locked_package", lockedPackageName)
-                                            }
-                                            AppLockManager.reportBiometricAuthStarted()
-                                            removeOverlay()
-                                            context.startActivity(intent)
-                                        }
+                                        onBiometricAuth = { startBiometricOrFace(lockedPackageName) }
                                     )
                                 }
 
                                 PreferencesRepository.LOCK_TYPE_PASSWORD -> {
                                     AlphanumericPasswordOverlayScreen(
-                                        showBiometricButton = appLockRepository.isBiometricAuthEnabled(),
+                                        showBiometricButton = appLockRepository.isBiometricAuthEnabled() || faceReady,
                                         fromMainActivity = false,
                                         showCloseButton = true,
                                         onClose = {
@@ -157,26 +157,14 @@ class LockScreenOverlayManager(private val context: Context):
                                             onUnlock()
                                             removeOverlay()
                                         },
-                                        onBiometricAuth = {
-                                            val intent = Intent(
-                                                context,
-                                                TransparentBiometricActivity::class.java
-                                            ).apply {
-                                                flags =
-                                                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
-                                                putExtra("locked_package", lockedPackageName)
-                                            }
-                                            AppLockManager.reportBiometricAuthStarted()
-                                            removeOverlay()
-                                            context.startActivity(intent)
-                                        },
+                                        onBiometricAuth = { startBiometricOrFace(lockedPackageName) },
                                         onPasswordAttempt = onPinAttemptCallback
                                     )
                                 }
 
                                 else -> {
                                     PinPasswordOverlayScreen(
-                                        showBiometricButton = appLockRepository.isBiometricAuthEnabled(),
+                                        showBiometricButton = appLockRepository.isBiometricAuthEnabled() || faceReady,
                                         fromMainActivity = false,
                                         showCloseButton = true,
                                         onClose = {
@@ -189,19 +177,7 @@ class LockScreenOverlayManager(private val context: Context):
                                             onUnlock()
                                             removeOverlay()
                                         },
-                                        onBiometricAuth = {
-                                            val intent = Intent(
-                                                context,
-                                                TransparentBiometricActivity::class.java
-                                            ).apply {
-                                                flags =
-                                                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
-                                                putExtra("locked_package", lockedPackageName)
-                                            }
-                                            AppLockManager.reportBiometricAuthStarted()
-                                            removeOverlay()
-                                            context.startActivity(intent)
-                                        },
+                                        onBiometricAuth = { startBiometricOrFace(lockedPackageName) },
                                         onPinAttempt = onPinAttemptCallback
                                     )
                                 }
@@ -254,6 +230,21 @@ class LockScreenOverlayManager(private val context: Context):
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    /** Face unlock when it's set up, otherwise the system fingerprint prompt. */
+    private fun startBiometricOrFace(lockedPackageName: String) {
+        if (FaceUnlock.isReady(context)) {
+            if (FaceUnlock.launchAuto(context, lockedPackageName)) removeOverlay()
+            return
+        }
+        val intent = Intent(context, TransparentBiometricActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
+            putExtra("locked_package", lockedPackageName)
+        }
+        AppLockManager.reportBiometricAuthStarted()
+        removeOverlay()
+        context.startActivity(intent)
     }
 
     fun removeOverlay() {

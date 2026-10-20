@@ -14,6 +14,10 @@ composeBom = "2026.06.01"
 material3 = "1.5.0-alpha23"
 materialIconsCore = "1.7.8"
 navigationCompose = "2.9.8"
+camerax = "1.5.0"
+mlkitFaceDetection = "16.1.7"
+litert = "1.4.0"
+junit = "4.13.2"
 
 [libraries]
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "activityCompose" }
@@ -39,6 +43,14 @@ hiddenapibypass = { module = "org.lsposed.hiddenapibypass:hiddenapibypass", vers
 refine-runtime = { module = "dev.rikka.tools.refine:runtime", version.ref = "refine" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
 shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
+
+androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
+androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
+mlkit-face-detection = { module = "com.google.mlkit:face-detection", version.ref = "mlkitFaceDetection" }
+litert = { module = "com.google.ai.edge.litert:litert", version.ref = "litert" }
+junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

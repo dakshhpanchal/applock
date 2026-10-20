@@ -51,6 +51,7 @@ import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.core.utils.vibrate
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.PreferencesRepository
+import dev.pranav.applock.features.faceauth.FaceUnlock
 import dev.pranav.applock.services.AppLockManager
 import dev.pranav.applock.ui.icons.Backspace
 import dev.pranav.applock.ui.icons.Fingerprint
@@ -108,7 +109,10 @@ class PasswordOverlayActivity: FragmentActivity() {
     override fun onPostResume() {
         super.onPostResume()
         setupBiometricPromptInternal()
-        if (appLockRepository.isBiometricAuthEnabled()) {
+        val pkg = lockedPackageNameFromIntent
+        if (pkg != null && FaceUnlock.isReady(this)) {
+            FaceUnlock.launchAuto(this, pkg)
+        } else if (appLockRepository.isBiometricAuthEnabled()) {
             triggerBiometricPrompt()
         }
     }
@@ -209,7 +213,7 @@ class PasswordOverlayActivity: FragmentActivity() {
                         PreferencesRepository.LOCK_TYPE_PASSWORD -> {
                             AlphanumericPasswordOverlayScreen(
                                 modifier = Modifier.padding(innerPadding),
-                                showBiometricButton = appLockRepository.isBiometricAuthEnabled(),
+                                showBiometricButton = appLockRepository.isBiometricAuthEnabled() || FaceUnlock.isReady(this@PasswordOverlayActivity),
                                 fromMainActivity = false,
                                 onBiometricAuth = { triggerBiometricPrompt() },
                                 onAuthSuccess = {},
@@ -224,7 +228,7 @@ class PasswordOverlayActivity: FragmentActivity() {
                         else -> {
                             PinPasswordOverlayScreen(
                                 modifier = Modifier.padding(innerPadding),
-                                showBiometricButton = appLockRepository.isBiometricAuthEnabled(),
+                                showBiometricButton = appLockRepository.isBiometricAuthEnabled() || FaceUnlock.isReady(this@PasswordOverlayActivity),
                                 fromMainActivity = false,
                                 onBiometricAuth = { triggerBiometricPrompt() },
                                 onAuthSuccess = {},
@@ -302,6 +306,11 @@ class PasswordOverlayActivity: FragmentActivity() {
     }
 
     fun triggerBiometricPrompt() {
+        val pkg = lockedPackageNameFromIntent
+        if (pkg != null && FaceUnlock.isReady(this)) {
+            FaceUnlock.launch(this, pkg)
+            return
+        }
         if (appLockRepository.isBiometricAuthEnabled()) {
             AppLockManager.reportBiometricAuthStarted()
             isBiometricPromptShowingLocal = true
