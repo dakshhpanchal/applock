@@ -30,6 +30,20 @@ fun vibrate(context: Context, duration: Long = DEFAULT_VIBRATION_DURATION) {
     }
 }
 
+/** Light, short tick for key presses. [vibrate] is for stronger feedback such as a wrong PIN. */
+fun vibrateTick(context: Context) {
+    try {
+        val effect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+        } else {
+            VibrationEffect.createOneShot(15, 40)
+        }
+        getVibrator(context).vibrate(effect)
+    } catch (e: Exception) {
+        Log.w(TAG, "Failed to vibrate device", e)
+    }
+}
+
 private fun getVibrator(context: Context): Vibrator {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val vibratorManager =

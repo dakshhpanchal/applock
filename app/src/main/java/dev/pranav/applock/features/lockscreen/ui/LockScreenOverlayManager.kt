@@ -243,8 +243,13 @@ class LockScreenOverlayManager(private val context: Context):
             putExtra("locked_package", lockedPackageName)
         }
         AppLockManager.reportBiometricAuthStarted()
-        removeOverlay()
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+            removeOverlay()
+        } catch (e: Exception) {
+            // Keep the PIN overlay up rather than exposing the app.
+            AppLockManager.reportBiometricAuthFinished()
+        }
     }
 
     fun removeOverlay() {

@@ -111,6 +111,7 @@ private fun EnrollCamera(onDone: () -> Unit) {
     FaceCameraView(
         modifier = Modifier.size(260.dp).clip(CircleShape),
         maxYawDeg = 35f, // allow side views while enrolling
+        onError = { message = "Camera or face model unavailable. Close and try again." },
         onResult = { result, ts ->
             if (saved) return@FaceCameraView
             when (val s = enroller.onFrame(result, ts)) {

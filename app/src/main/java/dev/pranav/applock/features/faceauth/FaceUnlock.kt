@@ -30,20 +30,26 @@ object FaceUnlock {
                 FaceTemplateStore(context).hasTemplates() &&
                 FaceEmbedder.isModelBundled(context)
 
-    /** Manual start (the biometric button). Returns false only if debounced. */
+    /** Manual start (the biometric button). Returns false if debounced or it couldn't start. */
     fun launch(context: Context, lockedPackage: String): Boolean {
         val now = SystemClock.elapsedRealtime()
         if (now - lastLaunchAt < 1_500) return false // debounce double triggers
         lastLaunchAt = now
 
         AppLockManager.reportBiometricAuthStarted()
-        context.startActivity(
-            Intent(context, FaceUnlockActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
-                putExtra(FaceUnlockActivity.EXTRA_LOCKED_PACKAGE, lockedPackage)
-            }
-        )
-        return true
+        return try {
+            context.startActivity(
+                Intent(context, FaceUnlockActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    putExtra(FaceUnlockActivity.EXTRA_LOCKED_PACKAGE, lockedPackage)
+                }
+            )
+            true
+        } catch (e: Exception) {
+            // Couldn't open it: don't leave the app thinking a biometric prompt is up.
+            AppLockManager.reportBiometricAuthFinished()
+            false
+        }
     }
 
     /**

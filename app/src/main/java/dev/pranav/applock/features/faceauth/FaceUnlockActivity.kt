@@ -38,6 +38,7 @@ class FaceUnlockActivity : FragmentActivity() {
 
     private var lockedPackage: String? = null
     private var finishedHandled = false
+    private var unlocked = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +46,7 @@ class FaceUnlockActivity : FragmentActivity() {
         val templates = FaceTemplateStore(this).load()
         if (lockedPackage == null || templates.isEmpty() || !FaceUnlock.hasCameraPermission(this)) {
             AppLockManager.reportBiometricAuthFinished()
+            AppLockManager.isLockScreenShown.set(false)
             finish()
             return
         }
@@ -68,6 +70,7 @@ class FaceUnlockActivity : FragmentActivity() {
     private fun onSuccess() {
         if (finishedHandled) return
         finishedHandled = true
+        unlocked = true
         lockedPackage?.let { AppLockManager.temporarilyUnlockAppWithBiometrics(it) }
         AppLockManager.isLockScreenShown.set(false)
         AppLockManager.reportBiometricAuthFinished()
@@ -79,6 +82,9 @@ class FaceUnlockActivity : FragmentActivity() {
         finishedHandled = true
         lockedPackage?.let(FaceUnlock::skipNextAutoStart)
         AppLockManager.reportBiometricAuthFinished()
+        // The overlay was removed when face unlock started; clearing this lets the service
+        // show the PIN screen again when the locked app comes back to the front.
+        AppLockManager.isLockScreenShown.set(false)
         finish()
     }
 
@@ -86,6 +92,15 @@ class FaceUnlockActivity : FragmentActivity() {
         super.onStop()
         // Left via Home/Recents: give up quietly; the lock screen will show again next time.
         if (!isChangingConfigurations && !finishedHandled) usePin()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Safety net: any exit without an unlock must let the PIN screen come back.
+        if (!unlocked) {
+            AppLockManager.reportBiometricAuthFinished()
+            AppLockManager.isLockScreenShown.set(false)
+        }
     }
 
     companion object {
@@ -103,6 +118,17 @@ private fun FaceUnlockScreen(
     var message by remember { mutableStateOf("") }
     var timedOut by remember { mutableStateOf(false) }
     var scanState by remember { mutableStateOf(FaceScanState.Scanning) }
+    var attempt by remember { mutableStateOf(0) }
+
+    // If the camera never produces a verdict (no frames), give up instead of waiting forever.
+    LaunchedEffect(attempt) {
+        delay(12_000)
+        if (scanState == FaceScanState.Scanning) {
+            timedOut = true
+            scanState = FaceScanState.Failed
+            message = "Face not recognised"
+        }
+    }
 
     // Let the success animation play before closing.
     LaunchedEffect(scanState) {
@@ -126,6 +152,7 @@ private fun FaceUnlockScreen(
         // No preview here: the camera only verifies in the background.
         FaceCameraView(
             showPreview = false,
+            onError = onUsePin, // camera or model unavailable: fall back to the PIN screen
             onResult = { result, ts ->
                 if (timedOut || scanState == FaceScanState.Success) return@FaceCameraView
                 when (val s = verifier.onFrame(result, ts)) {
@@ -151,6 +178,7 @@ private fun FaceUnlockScreen(
                 verifier.reset()
                 timedOut = false
                 scanState = FaceScanState.Scanning
+                attempt++
                 message = ""
             }) { Text("Try again") }
             Spacer(Modifier.height(8.dp))

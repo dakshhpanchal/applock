@@ -49,6 +49,7 @@ import dev.pranav.applock.R
 import dev.pranav.applock.core.ui.shapes
 import dev.pranav.applock.core.utils.appLockRepository
 import dev.pranav.applock.core.utils.vibrate
+import dev.pranav.applock.core.utils.vibrateTick
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.PreferencesRepository
 import dev.pranav.applock.features.faceauth.FaceUnlock
@@ -994,7 +995,7 @@ fun KeypadRow(
 
             FilledTonalButton(
                 onClick = {
-                    if (!disableHaptics) vibrate(context, 100)
+                    if (!disableHaptics) vibrateTick(context)
                     onKeyClick(key)
                 },
                 modifier = Modifier.size(buttonSize),

@@ -28,11 +28,13 @@ fun FaceCameraView(
     modifier: Modifier = Modifier,
     showPreview: Boolean = true,
     maxYawDeg: Float = 20f,
+    onError: () -> Unit = {},
     onResult: (FrameResult, Long) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestOnResult by rememberUpdatedState(onResult)
+    val latestOnError by rememberUpdatedState(onError)
 
     val previewView = remember {
         PreviewView(context).apply {
@@ -44,10 +46,17 @@ fun FaceCameraView(
     DisposableEffect(lifecycleOwner) {
         val analysisExecutor = Executors.newSingleThreadExecutor()
         val mainExecutor = ContextCompat.getMainExecutor(context)
-        val embedder = FaceEmbedder(context)
+        var disposed = false
+        val embedder = try {
+            FaceEmbedder(context)
+        } catch (e: Throwable) {
+            Log.e("FaceCameraView", "Face model failed to load", e)
+            analysisExecutor.shutdown()
+            mainExecutor.execute { latestOnError() }
+            return@DisposableEffect onDispose { disposed = true }
+        }
         val processor = FaceFrameProcessor(embedder, maxYawDeg = maxYawDeg)
         var provider: ProcessCameraProvider? = null
-        var disposed = false
 
         val future = ProcessCameraProvider.getInstance(context)
         future.addListener({
@@ -79,6 +88,7 @@ fun FaceCameraView(
                 }
             } catch (e: Exception) {
                 Log.e("FaceCameraView", "Camera bind failed", e)
+                latestOnError()
             }
         }, mainExecutor)
 
