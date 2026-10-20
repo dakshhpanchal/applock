@@ -59,7 +59,9 @@ class FaceFrameProcessor(
             embedder.embed(crop).also { crop.recycle() }
         } else null
 
-        return FrameResult.Accepted(face.trackingId, left, right, embedding)
+        return FrameResult.Accepted(
+            face.trackingId, left, right, embedding, face.headEulerAngleY, face.headEulerAngleX
+        )
     }
 
     /**

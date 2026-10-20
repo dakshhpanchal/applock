@@ -102,7 +102,7 @@ private fun FaceEnrollScreen(onDone: () -> Unit) {
 @Composable
 private fun EnrollCamera(onDone: () -> Unit) {
     val context = LocalContext.current
-    val enroller = remember { FaceEnroller() }
+    val enroller = remember { FaceEnroller(targetSamples = 9, poses = Pose.GUIDED) }
     var captured by remember { mutableIntStateOf(0) }
     var target by remember { mutableIntStateOf(1) }
     var message by remember { mutableStateOf("Look at the camera") }
@@ -110,6 +110,7 @@ private fun EnrollCamera(onDone: () -> Unit) {
 
     FaceCameraView(
         modifier = Modifier.size(260.dp).clip(CircleShape),
+        maxYawDeg = 35f, // allow side views while enrolling
         onResult = { result, ts ->
             if (saved) return@FaceCameraView
             when (val s = enroller.onFrame(result, ts)) {

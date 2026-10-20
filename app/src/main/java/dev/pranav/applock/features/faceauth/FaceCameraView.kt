@@ -27,6 +27,7 @@ import java.util.concurrent.Executors
 fun FaceCameraView(
     modifier: Modifier = Modifier,
     showPreview: Boolean = true,
+    maxYawDeg: Float = 20f,
     onResult: (FrameResult, Long) -> Unit,
 ) {
     val context = LocalContext.current
@@ -44,7 +45,7 @@ fun FaceCameraView(
         val analysisExecutor = Executors.newSingleThreadExecutor()
         val mainExecutor = ContextCompat.getMainExecutor(context)
         val embedder = FaceEmbedder(context)
-        val processor = FaceFrameProcessor(embedder)
+        val processor = FaceFrameProcessor(embedder, maxYawDeg = maxYawDeg)
         var provider: ProcessCameraProvider? = null
         var disposed = false
 
@@ -105,5 +106,7 @@ fun Hint?.toMessage(default: String): String = when (this) {
     Hint.BLINK -> "Now blink"
     Hint.KEEP_EYES_OPEN -> "Keep your eyes open"
     Hint.TURN_SLIGHTLY -> "Turn your head slightly"
+    Hint.TURN_ONE_SIDE -> "Slowly turn your head to one side"
+    Hint.TURN_OTHER_SIDE -> "Now turn to the other side"
     null -> default
 }
