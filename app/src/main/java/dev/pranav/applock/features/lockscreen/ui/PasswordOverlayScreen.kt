@@ -86,6 +86,12 @@ class PasswordOverlayActivity: FragmentActivity() {
             return
         }
 
+        // Fade in and out instead of the system's slide, on open and on unlock.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, R.anim.lock_fade_in, 0)
+            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, R.anim.lock_fade_out)
+        }
+
         enableEdgeToEdge()
 
         appLockRepository = applicationContext.appLockRepository()

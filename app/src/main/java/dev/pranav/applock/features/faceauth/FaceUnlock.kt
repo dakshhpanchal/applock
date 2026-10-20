@@ -46,9 +46,13 @@ object FaceUnlock {
         return try {
             context.startActivity(
                 Intent(context, FaceUnlockActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     putExtra(FaceUnlockActivity.EXTRA_LOCKED_PACKAGE, lockedPackage)
-                }
+                },
+                // Explicit fade, so the system doesn't pick its own sideways slide for the new task.
+                android.app.ActivityOptions.makeCustomAnimation(
+                    context, dev.pranav.applock.R.anim.lock_fade_in, 0
+                ).toBundle()
             )
             true
         } catch (e: Exception) {

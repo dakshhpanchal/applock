@@ -26,6 +26,7 @@ import dev.pranav.applock.core.utils.hasUsagePermission
 import dev.pranav.applock.data.repository.AppLockRepository
 import dev.pranav.applock.data.repository.AppLockRepository.Companion.shouldStartService
 import dev.pranav.applock.data.repository.BackendImplementation
+import dev.pranav.applock.features.faceauth.FaceUnlock
 import dev.pranav.applock.features.lockscreen.ui.PasswordOverlayActivity
 import java.util.Timer
 import kotlin.concurrent.timerTask
@@ -267,6 +268,10 @@ class UsageLockService: Service() {
         LogUtils.d(TAG, "Locked app: $packageName. Showing overlay.")
         AppLockManager.isLockScreenShown.set(true)
 
+        // Face unlock set up: open it directly. Going through the PIN screen first meant two
+        // screens opening back to back, which is the jerky switch you saw.
+        if (FaceUnlock.isReady(this) && FaceUnlock.launchAuto(this, packageName)) return
+
         val intent = Intent(this, PasswordOverlayActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
@@ -277,7 +282,13 @@ class UsageLockService: Service() {
         }
 
         try {
-            startActivity(intent)
+            // Explicit fade: the system default for a new task is a sideways slide.
+            startActivity(
+                intent,
+                android.app.ActivityOptions.makeCustomAnimation(
+                    this, dev.pranav.applock.R.anim.lock_fade_in, 0
+                ).toBundle()
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error starting overlay for: $packageName", e)
             AppLockManager.isLockScreenShown.set(false)
