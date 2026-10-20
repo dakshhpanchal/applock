@@ -55,6 +55,10 @@ object AppLockManager {
     var temporarilyUnlockedApp: String = ""
     val appUnlockTimes = ConcurrentHashMap<String, Long>()
     val isLockScreenShown = AtomicBoolean(false)
+
+    /** When a lock screen (PIN or face) was last started, so a slow start isn't mistaken for a stuck state. */
+    @Volatile
+    var lastLockLaunchAt = 0L
     /**
      * Set by the accessibility service. Asks it to show the PIN overlay for a package right now,
      * so a biometric screen can close with the overlay already covering the app (no glimpse of it).

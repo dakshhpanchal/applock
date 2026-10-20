@@ -63,6 +63,12 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
 
 class PasswordOverlayActivity: FragmentActivity() {
+    companion object {
+        /** True while a PIN lock screen activity exists. Lets the services spot a stuck "shown" state. */
+        @Volatile
+        var isOpen = false
+    }
+
     private lateinit var executor: Executor
     private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
@@ -92,6 +98,7 @@ class PasswordOverlayActivity: FragmentActivity() {
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, R.anim.lock_fade_out)
         }
 
+        isOpen = true
         enableEdgeToEdge()
 
         appLockRepository = applicationContext.appLockRepository()
@@ -361,6 +368,7 @@ class PasswordOverlayActivity: FragmentActivity() {
     }
 
     override fun onDestroy() {
+        isOpen = false
         super.onDestroy()
         AppLockManager.isLockScreenShown.set(false)
         AppLockManager.reportBiometricAuthFinished()

@@ -235,6 +235,7 @@ class ShizukuAppLockService : Service() {
 
         LogUtils.d(TAG, "Locked app detected: $packageName. Showing overlay.")
         AppLockManager.isLockScreenShown.set(true)
+        AppLockManager.lastLockLaunchAt = android.os.SystemClock.elapsedRealtime()
 
         // Face unlock set up: open it directly. Going through the PIN screen first meant two
         // screens opening back to back, which is the jerky switch you saw.

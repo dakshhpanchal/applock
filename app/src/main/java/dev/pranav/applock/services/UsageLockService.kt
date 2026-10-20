@@ -260,13 +260,29 @@ class UsageLockService: Service() {
             AppLockManager.appUnlockTimes.remove(packageName)
         }
 
+        // Self-heal: "shown" / "biometric in progress" with no lock screen actually open (the
+        // screen was closed some way that skipped the reset) would stop locking for good.
+        val noLockScreenOpen = !PasswordOverlayActivity.isOpen && !FaceUnlock.screenOpen
+        if (noLockScreenOpen &&
+            android.os.SystemClock.elapsedRealtime() - AppLockManager.lastLockLaunchAt > 2_500
+        ) {
+            if (AppLockManager.isLockScreenShown.getAndSet(false) ||
+                AppLockManager.currentBiometricState.toString() == biometricAuthStarted
+            ) {
+                Log.w(TAG, "Clearing stale lock-screen state for $packageName")
+            }
+            AppLockManager.reportBiometricAuthFinished()
+        }
+
         if (AppLockManager.isLockScreenShown.get() || AppLockManager.currentBiometricState.toString() == biometricAuthStarted) {
+            Log.d(TAG, "Not locking $packageName: shown=${AppLockManager.isLockScreenShown.get()} state=${AppLockManager.currentBiometricState}")
             LogUtils.d(TAG, "Lock screen already shown or biometric auth in progress, skipping")
             return
         }
 
         LogUtils.d(TAG, "Locked app: $packageName. Showing overlay.")
         AppLockManager.isLockScreenShown.set(true)
+        AppLockManager.lastLockLaunchAt = android.os.SystemClock.elapsedRealtime()
 
         // Face unlock set up: open it directly. Going through the PIN screen first meant two
         // screens opening back to back, which is the jerky switch you saw.

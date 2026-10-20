@@ -41,6 +41,7 @@ object FaceUnlock {
         // right after an unlock still starts face unlock.
         if (auto && (screenOpen || now - lastLaunchAt < 400)) return false
         lastLaunchAt = now
+        AppLockManager.lastLockLaunchAt = now
 
         AppLockManager.reportBiometricAuthStarted()
         return try {
