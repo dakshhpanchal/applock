@@ -16,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import dev.pranav.applock.services.AppLockManager
+import kotlinx.coroutines.delay
 import dev.pranav.applock.ui.theme.AppLockTheme
 
 /**
@@ -100,6 +102,15 @@ private fun FaceUnlockScreen(
     val verifier = remember { FaceVerifier(templates) }
     var message by remember { mutableStateOf("") }
     var timedOut by remember { mutableStateOf(false) }
+    var scanState by remember { mutableStateOf(FaceScanState.Scanning) }
+
+    // Let the success animation play before closing.
+    LaunchedEffect(scanState) {
+        if (scanState == FaceScanState.Success) {
+            delay(550)
+            onSuccess()
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -109,17 +120,19 @@ private fun FaceUnlockScreen(
         Text("Face unlock", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(24.dp))
 
+        FaceScanIndicator(scanState)
+        Spacer(Modifier.height(24.dp))
+
         // No preview here: the camera only verifies in the background.
         FaceCameraView(
             showPreview = false,
             onResult = { result, ts ->
-                if (timedOut) return@FaceCameraView
+                if (timedOut || scanState == FaceScanState.Success) return@FaceCameraView
                 when (val s = verifier.onFrame(result, ts)) {
-                    is FaceVerifier.Status.Success -> {
-                        onSuccess()
-                    }
+                    is FaceVerifier.Status.Success -> scanState = FaceScanState.Success
                     FaceVerifier.Status.TimedOut -> {
                         timedOut = true
+                        scanState = FaceScanState.Failed
                         message = "Face not recognised"
                     }
                     is FaceVerifier.Status.InProgress -> Unit // no on-screen hints
@@ -137,6 +150,7 @@ private fun FaceUnlockScreen(
             Button(onClick = {
                 verifier.reset()
                 timedOut = false
+                scanState = FaceScanState.Scanning
                 message = ""
             }) { Text("Try again") }
             Spacer(Modifier.height(8.dp))
