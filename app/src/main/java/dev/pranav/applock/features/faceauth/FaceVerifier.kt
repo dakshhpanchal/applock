@@ -16,6 +16,7 @@ class FaceVerifier(
     private val requiredMatches: Int = 3,
     private val timeoutMs: Long = 8_000,
     private val liveness: BlinkLivenessDetector = BlinkLivenessDetector(),
+    private val requireBlink: Boolean = true,
 ) {
     init {
         require(templates.isNotEmpty()) { "No enrolled face" }
@@ -54,7 +55,7 @@ class FaceVerifier(
             if (score >= threshold) matches++
         }
 
-        if (liveness.passed && matches >= requiredMatches) {
+        if ((!requireBlink || liveness.passed) && matches >= requiredMatches) {
             done = true
             return Status.Success(bestScore)
         }

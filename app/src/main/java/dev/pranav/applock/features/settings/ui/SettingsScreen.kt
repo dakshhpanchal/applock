@@ -92,6 +92,7 @@ fun SettingsScreen(
     var useMaxBrightness by remember { mutableStateOf(appLockRepository.shouldUseMaxBrightness()) }
     var useBiometricAuth by remember { mutableStateOf(appLockRepository.isBiometricAuthEnabled()) }
     var faceUnlockOn by remember { mutableStateOf(FaceUnlock.isReady(context)) }
+    var faceBlinkRequired by remember { mutableStateOf(appLockRepository.isFaceBlinkRequired()) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         // Refresh after returning from the enrollment screen.
         faceUnlockOn = FaceUnlock.isReady(context)
@@ -312,6 +313,20 @@ fun SettingsScreen(
                                     FaceTemplateStore(context).clear()
                                     faceUnlockOn = false
                                 }
+                            }
+                        ),
+                        ToggleSettingItem(
+                            icon = Icons.Default.Face,
+                            title = "Require blink for face unlock",
+                            subtitle = if (faceBlinkRequired)
+                                "On. You blink once to unlock, so a photo of you won't work."
+                            else
+                                "Off. Faster, but a photo of you could unlock the app.",
+                            checked = faceBlinkRequired,
+                            enabled = faceUnlockOn,
+                            onCheckedChange = { isChecked ->
+                                faceBlinkRequired = isChecked
+                                appLockRepository.setFaceBlinkRequired(isChecked)
                             }
                         ),
                         ToggleSettingItem(

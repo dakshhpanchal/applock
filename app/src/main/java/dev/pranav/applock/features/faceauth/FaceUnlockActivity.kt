@@ -171,7 +171,7 @@ private fun FaceUnlockScreen(
         val loaded = withContext(Dispatchers.Default) { FaceTemplateStore(context).load() }
         if (loaded.isEmpty()) onUsePin() else templates = loaded
     }
-    val verifier = remember(templates) { templates?.let { FaceVerifier(it) } }
+    val verifier = remember(templates) { templates?.let { FaceVerifier(it, requireBlink = context.appLockRepository().isFaceBlinkRequired()) } }
     var message by remember { mutableStateOf("") }
     var timedOut by remember { mutableStateOf(false) }
     var scanState by remember { mutableStateOf(FaceScanState.Scanning) }

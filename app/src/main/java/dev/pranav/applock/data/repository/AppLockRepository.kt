@@ -67,6 +67,8 @@ class AppLockRepository(private val context: Context) {
 
     fun setFaceUnlockEnabled(enabled: Boolean) = preferencesRepository.setFaceUnlockEnabled(enabled)
     fun isFaceUnlockEnabled(): Boolean = preferencesRepository.isFaceUnlockEnabled()
+    fun setFaceBlinkRequired(required: Boolean) = preferencesRepository.setFaceBlinkRequired(required)
+    fun isFaceBlinkRequired(): Boolean = preferencesRepository.isFaceBlinkRequired()
 
     fun setUseMaxBrightness(enabled: Boolean) = preferencesRepository.setUseMaxBrightness(enabled)
     fun shouldUseMaxBrightness(): Boolean = preferencesRepository.shouldUseMaxBrightness()

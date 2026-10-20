@@ -82,6 +82,15 @@ class PreferencesRepository(context: Context) {
         return settingsPrefs.getBoolean(KEY_FACE_UNLOCK_ENABLED, false)
     }
 
+    fun setFaceBlinkRequired(required: Boolean) {
+        settingsPrefs.edit { putBoolean(KEY_FACE_BLINK_REQUIRED, required) }
+    }
+
+    /** On by default: without the blink a photo of the owner can unlock. */
+    fun isFaceBlinkRequired(): Boolean {
+        return settingsPrefs.getBoolean(KEY_FACE_BLINK_REQUIRED, true)
+    }
+
     fun setUseMaxBrightness(enabled: Boolean) {
         settingsPrefs.edit { putBoolean(KEY_USE_MAX_BRIGHTNESS, enabled) }
     }
@@ -186,6 +195,7 @@ class PreferencesRepository(context: Context) {
         private const val KEY_PATTERN = "pattern"
         private const val KEY_BIOMETRIC_AUTH_ENABLED = "use_biometric_auth"
         private const val KEY_FACE_UNLOCK_ENABLED = "use_camera_face_unlock"
+        private const val KEY_FACE_BLINK_REQUIRED = "face_unlock_blink_required"
         private const val KEY_DISABLE_HAPTICS = "disable_haptics"
         private const val KEY_USE_MAX_BRIGHTNESS = "use_max_brightness"
         private const val KEY_ANTI_UNINSTALL = "anti_uninstall"

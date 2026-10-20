@@ -24,6 +24,8 @@ class AppLockApplication : Application() {
         super.onCreate()
         initializeComponents()
 
+        dev.pranav.applock.core.broadcast.ServiceWatchdog.schedule(this)
+
         LogUtils.initialize(this)
         LogUtils.setLoggingEnabled(appLockRepository.isLoggingEnabled())
         // Purge logs older than 3 days on every app start (run in background to avoid ANR)

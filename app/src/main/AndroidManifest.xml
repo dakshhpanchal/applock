@@ -138,6 +138,10 @@
         </receiver>
 
         <receiver
+            android:name=".core.broadcast.WatchdogReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".core.broadcast.BootReceiver"
             android:directBootAware="true"
             android:enabled="true"
